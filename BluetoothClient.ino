@@ -120,9 +120,13 @@ void loop() {
 
   if (connected) {
     // Read the characteristic value from the server
+    pinMode(2,OUTPUT);
+    digitalWrite(2,HIGH);
     std::string value = pRemoteCharacteristic->readValue();
     Serial.print("Received characteristic value from the server: ");
     Serial.println(value.c_str());
+    delay(50);
+    digitalWrite(2,LOW);
 
   } else if (doScan) {
     BLEDevice::getScan()->start(0);
