@@ -1,28 +1,29 @@
-
-// Code was edited from https://tutorials-raspberrypi.com/esp32-bluetooth-connection-to-esp8266-and-raspberry-pi/
-
 #include "BLEDevice.h"
 
 static BLEUUID serviceUUID("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
-static BLEUUID charUUID("beb5483e-36e1-4688-b7f5-ea07361b26a8");
+static BLEUUID charUUID("beb5483e-36e1-4688-b7f5-ea07361b26a8");  
 
 static boolean doConnect = false;
 static boolean connected = false;
 static boolean doScan = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
 static BLEAdvertisedDevice* myDevice;
+std::string lastReceivedMessage = "";
+std::string value = "";
+int predictedNumber = 1;  // Start with the initial predicted number
+int receivedNumber = 0;
 
 static void notifyCallback(
-    BLERemoteCharacteristic* pBLERemoteCharacteristic,
-    uint8_t* pData,
-    size_t length,
-    bool isNotify) {
-  Serial.print("Notify callback for characteristic ");
-  Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
-  Serial.print(" of data length ");
-  Serial.println(length);
-  Serial.print("data: ");
-  Serial.println((char*)pData);
+  BLERemoteCharacteristic* pBLERemoteCharacteristic,
+  uint8_t* pData,
+  size_t length,
+  bool isNotify) {
+    Serial.print("Notify callback for characteristic ");
+    Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
+    Serial.print(" of data length ");
+    Serial.println(length);
+    Serial.print("data: ");
+    Serial.println((char*)pData);
 }
 
 class MyClientCallback : public BLEClientCallbacks {
@@ -44,7 +45,6 @@ bool connectToServer() {
 
   pClient->setClientCallbacks(new MyClientCallback());
 
-  // Connect to the remove BLE Server.
   pClient->connect(myDevice);  
   Serial.println(" - Connected to server");
 
@@ -66,14 +66,8 @@ bool connectToServer() {
   }
   Serial.println(" - Found our characteristic");
 
-  if (pRemoteCharacteristic->canRead()) {
-    std::string value = pRemoteCharacteristic->readValue();
-    Serial.print("The characteristic value was: ");
-    Serial.println(value.c_str());
-  }
-
-  if (pRemoteCharacteristic->canNotify())
-    pRemoteCharacteristic->registerForNotify(notifyCallback);
+  if(pRemoteCharacteristic->canNotify())
+      pRemoteCharacteristic->registerForNotify(notifyCallback);
 
   connected = true;
   return true;
@@ -120,17 +114,31 @@ void loop() {
 
   if (connected) {
     // Read the characteristic value from the server
-    pinMode(2,OUTPUT);
-    digitalWrite(2,HIGH);
-    std::string value = pRemoteCharacteristic->readValue();
-    Serial.print("Received characteristic value from the server: ");
-    Serial.println(value.c_str());
-    delay(50);
-    digitalWrite(2,LOW);
+    value = pRemoteCharacteristic->readValue();
+    if(lastReceivedMessage != value.c_str()){
+    lastReceivedMessage = value;
+    // Convert the received value to an integer
+    receivedNumber = atoi(value.c_str());
 
+    // Check if the received number matches the predicted next number
+    if (receivedNumber != predictedNumber) {
+        // Print an error message and update the predicted number
+      Serial.println("Error: Connection issue may have occurred. Predicted number: " + String(predictedNumber) + ", Received number: " + String(receivedNumber));
+      predictedNumber = receivedNumber;
+      digitalWrite(2,LOW);
+    }else{
+      Serial.print("Received characteristic value from the server: ");
+      Serial.println(value.c_str());
+      digitalWrite(2,HIGH);
+      
+    }
+      predictedNumber++;
+  
+    }
   } else if (doScan) {
     BLEDevice::getScan()->start(0);
   }
+  
 
-  delay(500);
+  delay(100);
 }
