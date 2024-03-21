@@ -23,7 +23,7 @@ int32_t generateSoundData(Frame *data, int32_t frameCount)
     float pi_2 = PI * 2.0;
     float c3_frequency = 130.81;
     // fill the channel data
-    for (int sample = 0; sample < frame_count; ++sample) {
+    for (int sample = 0; sample < frameCount; ++sample) {
         float angle = pi_2 * c3_frequency * m_time + m_phase;
         frame[sample].channel1 = m_amplitude * sin(angle);
         frame[sample].channel2 = frame[sample].channel1;
