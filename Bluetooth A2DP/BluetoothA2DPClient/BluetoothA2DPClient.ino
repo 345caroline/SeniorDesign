@@ -16,6 +16,8 @@ BluetoothA2DPSink a2dp_sink;
 BLECharacteristic *pCharacteristic;
 char title[160] = {"Undefined"};
 
+int dataRecieved = 0;
+
 void avrc_metadata_callback(uint8_t id, const uint8_t *text) {
   Serial.printf("==> AVRC metadata rsp: attribute id 0x%x, %s\n", id, text);
   if (id == ESP_AVRC_MD_ATTR_TITLE) {
@@ -28,34 +30,39 @@ void connection_state_changed(esp_a2d_connection_state_t state, void *ptr){
   Serial.println(a2dp_sink.to_str(state));
 }
 
+void avrc_playback_rn_playstatus_changed(esp_avrc_playback_stat_t state, void *ptr)
+{
+  Serial.println(a2dp_sink.to_str(state));
+}
+
+void audio_state_changed(esp_a2d_audio_state_t state, void *ptr)
+{
+  Serial.println(a2dp_sink.to_str(state));
+}
+
+void data_recieved()
+{
+  dataRecieved++;
+}
+
 void setup() {
   // start a2dp in ESP_BT_MODE_BTDM mode
   Serial.begin(115200);
   a2dp_sink.set_default_bt_mode(ESP_BT_MODE_BTDM);
   a2dp_sink.set_on_connection_state_changed(connection_state_changed);
   a2dp_sink.set_avrc_metadata_callback(avrc_metadata_callback);
+  //a2dp_sink.set_avrc_rn_playstatus_callback(avrc_playback_rn_playstatus_changed);
+  a2dp_sink.set_on_audio_state_changed(audio_state_changed);
+  a2dp_sink.set_on_data_received (data_recieved);
   a2dp_sink.start("A2DP Bluetooth Client");
   Serial.println("A2DP Started!");
 
-  // start BLE
-  BLEDevice::init("Bluetooth A2DP Client");
-  BLEServer *pServer = BLEDevice::createServer();
-  BLEService *pService = pServer->createService(SERVICE_UUID);
-  pCharacteristic = pService->createCharacteristic(
-      CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ);
-
-  pCharacteristic->setValue(title);
-  pService->start();
-  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-  pAdvertising->addServiceUUID(SERVICE_UUID);
-  pAdvertising->setScanResponse(true);
-  pAdvertising->setMinPreferred(
-      0x06); // functions that help with iPhone connections issue
-  pAdvertising->setMinPreferred(0x12);
-  BLEDevice::startAdvertising();
-  Serial.println("Characteristic defined! Now you can read it in your phone!");
+  
 }
 
 void loop() {
   delay(1000); // do nothing
+  Serial.print("Data sent ");
+  Serial.print(dataRecieved);
+  Serial.println(" times");
 }
